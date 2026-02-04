@@ -1,0 +1,2109 @@
+<html lang="zh-CN"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简番茄工作法 | 计时+计划+习惯+数据分析</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 图标 -->
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <!-- Chart.js 轻量图表 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <!-- 字体配置 -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+    <!-- Tailwind 自定义配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        tomato: '#B52B2D', // 主色番茄红
+                        light: '#F9F9F5',   // 背景淡黄色
+                        gray-light: '#DFDED7',
+                        gray-mid: '#9CA3AF',
+                        gray-dark: '#374151',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .timer-ring { transition: stroke-dashoffset 1s linear; transform: rotate(-90deg); transform-origin: 50% 50%; }
+            .collapse-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+            .collapse-open { max-height: 1000px; }
+            .list-hover { @apply hover:bg-light/80 transition-colors; }
+            .fade-in { animation: fadeIn 0.3s ease-in-out; }
+            .scale-in { animation: scaleIn 0.3s ease-in-out; }
+            .bounce-in { animation: bounceIn 0.5s ease-in-out; }
+            .drag-item { cursor: grab; user-select: none; }
+            .drag-item:active { cursor: grabbing; }
+            .card-hover { @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5; }
+            .glass-effect { @apply backdrop-blur-sm bg-white/80 border border-white/20; }
+            /* 新增：主题颜色类 */
+            .bg-primary { background-color: var(--primary-color) !important; }
+            .text-primary { color: var(--primary-color) !important; }
+            .border-primary { border-color: var(--primary-color) !important; }
+            .ring-primary { ring-color: var(--primary-color) !important; }
+            .stroke-primary { stroke: var(--primary-color) !important; }
+            .hover\:bg-primary\/90:hover { background-color: color-mix(in srgb, var(--primary-color) 90%, transparent) !important; }
+            .hover\:bg-primary\/80:hover { background-color: color-mix(in srgb, var(--primary-color) 80%, transparent) !important; }
+            .hover\:bg-primary\/70:hover { background-color: color-mix(in srgb, var(--primary-color) 70%, transparent) !important; }
+        }
+        
+        /* 深色模式样式 */
+        .dark {
+            --bg-color: #1a1a1a;
+            --text-color: #e5e5e5;
+            --light-color: #2d2d2d;
+            --gray-dark: #b0b0b0;
+            --gray-mid: #808080;
+            --tomato-color: #ff6b6b;
+        }
+        
+        .dark body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+        }
+        
+        .dark .bg-light {
+            background-color: var(--light-color);
+        }
+        
+        .dark .text-gray-dark {
+            color: var(--gray-dark);
+        }
+        
+        .dark .text-gray-mid {
+            color: var(--gray-mid);
+        }
+        
+        .dark .border-light {
+            border-color: var(--light-color);
+        }
+        
+        .dark .hover\:bg-light\/80:hover {
+            background-color: rgba(45, 45, 45, 0.8);
+        }
+        
+        .dark .opacity-60 {
+            opacity: 0.6;
+        }
+        
+        /* 数据分析模块深色模式样式 */
+        .dark #no-data-message {
+            background-color: var(--light-color) !important;
+        }
+        
+        .dark #no-data-message h4 {
+            color: var(--text-color) !important;
+        }
+        
+        .dark #no-data-message p {
+            color: var(--gray-mid) !important;
+        }
+        
+        /* 确保图表容器在深色模式下有正确的背景 */
+        .dark #data-chart-collapse {
+            background-color: var(--light-color) !important;
+            border-radius: 0.375rem !important;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-light min-h-screen py-4 px-4">
+    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6 relative">
+        <!-- 新增：右上角设置按钮 -->
+        <div class="absolute top-0 right-0 z-10">
+            <button id="settings-toggle" class="p-2 bg-light rounded-full hover:bg-light/80 transition-colors text-gray-dark">
+                <i class="fa fa-cog"></i>
+            </button>
+        </div>
+        
+        <!-- 新增：设置面板 -->
+        <div id="settings-panel" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center p-4 border-b border-light dark:border-gray-700">
+                    <h3 class="text-lg font-bold text-gray-dark">设置</h3>
+                    <button id="close-settings" class="text-gray-mid hover:text-primary">
+                        <i class="fa fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4 space-y-4">
+                    <!-- 时间设置 -->
+                    <div class="space-y-2">
+                        <h4 class="font-medium text-gray-dark flex items-center gap-2">
+                            <i class="fa fa-clock-o text-primary"></i> 时间设置
+                        </h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="work-time" class="block text-xs text-gray-mid mb-1">工作时间(分钟)</label>
+                                <input type="number" id="work-time" class="w-full px-2 py-1.5 border border-light dark:border-gray-600 rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm" value="25" min="1" max="60">
+                            </div>
+                            <div>
+                                <label for="break-time" class="block text-xs text-gray-mid mb-1">休息时间(分钟)</label>
+                                <input type="number" id="break-time" class="w-full px-2 py-1.5 border border-light dark:border-gray-600 rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm" value="5" min="1" max="30">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 主题设置 -->
+                    <div class="space-y-2">
+                        <h4 class="font-medium text-gray-dark flex items-center gap-2">
+                            <i class="fa fa-paint-brush text-primary"></i> 主题设置
+                        </h4>
+                        <div class="flex gap-2 mb-2">
+                            <button id="theme-toggle" class="flex-1 px-3 py-1.5 bg-primary text-black rounded-full hover:bg-primary/90 text-sm">
+                                <i class="fa fa-moon-o"></i> 深色模式
+                            </button>
+                            <select id="primary-color" class="flex-1 px-2 py-1.5 border border-light dark:border-gray-600 rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                                <option value="tomato">番茄红</option>
+                                <option value="blue">深海蓝</option>
+                                <option value="green">森林绿</option>
+                                <option value="purple">薰衣草紫</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-xs text-gray-mid flex items-center">字体大小：</span>
+                            <button data-size="small" class="font-size-btn px-2 py-1 rounded text-xs hover:bg-light/80">小</button>
+                            <button data-size="medium" class="font-size-btn px-2 py-1 rounded text-xs bg-light/80">中</button>
+                            <button data-size="large" class="font-size-btn px-2 py-1 rounded text-xs hover:bg-light/80">大</button>
+                        </div>
+                    </div>
+                    
+                    <!-- 白噪音设置 -->
+                    <div class="space-y-2">
+                        <h4 class="font-medium text-gray-dark flex items-center gap-2">
+                            <i class="fa fa-music text-primary"></i> 白噪音
+                        </h4>
+                        <div class="flex gap-2 mb-2">
+                            <button id="whitenoise-toggle" class="flex-1 px-3 py-1.5 bg-light dark:bg-gray-700 text-gray-dark rounded-full hover:bg-light/80 text-sm">
+                                <i class="fa fa-volume-up"></i> 开启
+                            </button>
+                            <select id="whitenoise-type" class="flex-1 px-2 py-1.5 border border-light dark:border-gray-600 rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                                <option value="cafe">咖啡馆</option>
+                                <option value="rain">雨声</option>
+                                <option value="library">图书馆</option>
+                                <option value="nature">自然音</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-mid">音量：</span>
+                            <input type="range" id="whitenoise-volume" min="0" max="1" step="0.1" value="0.5" class="flex-1">
+                            <label class="text-xs text-gray-mid">
+                                <input type="checkbox" id="play-during-break"> 休息时播放
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- 数据备份 -->
+                    <div class="space-y-2">
+                        <h4 class="font-medium text-gray-dark flex items-center gap-2">
+                            <i class="fa fa-download text-primary"></i> 数据备份
+                        </h4>
+                        <div class="flex gap-2">
+                            <button id="export-data" class="flex-1 px-3 py-1.5 bg-primary text-black rounded-full hover:bg-primary/90 text-sm">导出数据</button>
+                            <button id="import-data" class="flex-1 px-3 py-1.5 bg-light dark:bg-gray-700 text-gray-dark rounded-full hover:bg-light/80 text-sm">导入数据</button>
+                        </div>
+                        <input type="file" id="import-file" accept=".txt" class="hidden">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 左侧：核心番茄计时器 -->
+        <div class="lg:col-span-1 flex flex-col items-center">
+            <h1 class="text-[clamp(1.5rem,3vw,2rem)] font-bold text-gray-dark mb-4">番茄工作法</h1>
+            
+            <!-- 番茄计时圆环 -->
+            <div class="relative w-56 h-56 mb-4">
+                <svg class="w-full h-full" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="45" fill="none" class="stroke-primary" stroke-width="4"></circle>
+                    <circle id="timer-ring" class="timer-ring cx-50 cy-50 r-45 fill-none stroke-transparent stroke-4" stroke-dasharray="282.74" stroke-dashoffset="0"></circle>
+                </svg>
+                <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span id="timer-display" class="text-[clamp(1.8rem,4vw,2.5rem)] font-bold text-gray-dark">25:00</span>
+                    <span id="timer-status" class="text-sm text-primary/80 mt-1">准备开始工作</span>
+                </div>
+            </div>
+
+            <!-- 计时控制按钮 -->
+            <div class="flex space-x-3 mb-4">
+                <button id="start-btn" class="px-5 py-2 bg-primary text-white rounded-full hover:bg-primary/90 transition-colors flex items-center gap-2">
+                    <i class="fa fa-play"></i> 开始
+                </button>
+                <button id="reset-btn" class="px-5 py-2 bg-light text-gray-dark rounded-full hover:bg-light/80 transition-colors flex items-center gap-2">
+                    <i class="fa fa-refresh"></i> 重置
+                </button>
+            </div>
+
+            <!-- 模式切换 -->
+            <div class="inline-flex rounded-full mb-4" role="group">
+                <button id="work-mode" class="px-5 py-1.5 bg-primary text-white rounded-l-full hover:bg-primary/90 text-sm">工作模式</button>
+                <button id="break-mode" class="px-5 py-1.5 bg-transparent text-gray-dark rounded-r-full hover:bg-primary/10 hover:text-gray-dark text-sm">休息模式</button>
+            </div>
+
+            <!-- 番茄标签 -->
+            <div class="w-full bg-light rounded-lg p-3 mb-4">
+                <h3 class="font-medium text-gray-dark mb-2 flex items-center gap-2 text-sm"><i class="fa fa-tag text-primary"></i> 番茄标签</h3>
+                <div class="flex gap-2">
+                    <button id="tag-work" class="flex-1 py-1.5 bg-transparent text-gray-dark rounded-full text-sm">工作</button>
+                    <button id="tag-study" class="flex-1 py-1.5 bg-transparent text-gray-dark rounded-full text-sm">学习</button>
+                    <button id="tag-life" class="flex-1 py-1.5 bg-transparent text-gray-dark rounded-full text-sm">生活</button>
+                </div>
+            </div>
+
+
+
+            <!-- 今日番茄简易统计 -->
+            <div class="w-full bg-light rounded-lg p-3 mb-4">
+                <h3 class="font-medium text-gray-dark mb-2 flex items-center gap-2 text-sm"><i class="fa fa-tomato text-primary"></i> 今日统计</h3>
+                <div class="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                        <p class="text-xs text-gray-mid">已完成</p>
+                        <p id="completed-pomodoros" class="text-lg font-bold text-primary">0</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-mid">专注时长</p>
+                        <p id="focus-time" class="text-lg font-bold text-primary">0分钟</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-gray-mid">连续完成</p>
+                        <p id="current-streak" class="text-lg font-bold text-primary">0</p>
+                    </div>
+                </div>
+            </div>
+
+
+        </div>
+
+        <!-- 右侧：计划/习惯/目标 -->
+        <div class="lg:col-span-2 flex flex-col gap-4">
+            <!-- 今日计划模块 -->
+            <div class="bg-light rounded-lg p-3 card-hover">
+                <div class="flex justify-between items-center mb-3 cursor-pointer" id="plan-collapse-header">
+                    <h3 class="font-medium text-gray-dark flex items-center gap-2 text-sm"><i class="fa fa-list-alt text-primary"></i> 今日计划</h3>
+                    <div class="flex items-center gap-2">
+                        <button id="save-template-btn" class="text-xs text-blue hover:text-blue/80" title="保存为模板">
+                            <i class="fa fa-save"></i> 保存模板
+                        </button>
+                        <select id="template-select" class="text-xs border border-light rounded px-1 py-0.5">
+                            <option value="">加载模板</option>
+                        </select>
+                        <span class="text-gray-mid text-xs"><i class="fa fa-chevron-down" id="plan-collapse-icon"></i></span>
+                    </div>
+                </div>
+                <!-- 计划添加 -->
+                <div class="flex flex-col gap-2 mb-3 collapse-content collapse-open" id="plan-collapse">
+                    <div class="flex gap-2">
+                        <input type="text" id="plan-input" placeholder="输入今日计划（如：写报告）" class="flex-1 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                        <input type="number" id="plan-pomo" placeholder="预计番茄数" class="w-16 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm" min="1" value="1">
+                        <select id="plan-priority" class="w-16 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                            <option value="high">高</option>
+                            <option value="medium" selected="">中</option>
+                            <option value="low">低</option>
+                        </select>
+                    </div>
+                    <!-- 新增：目标关联 -->
+                    <div class="flex gap-2">
+                        <select id="goal-select" class="flex-1 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                            <option value="">关联目标（可选）</option>
+                        </select>
+                        <select id="stage-select" class="flex-1 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm" disabled="">
+                            <option value="">选择阶段</option>
+                        </select>
+                    </div>
+                    <button id="add-plan" class="w-full px-3 py-1.5 bg-primary text-white rounded-full hover:bg-primary/90 text-sm">添加计划</button>
+                </div>
+                <!-- 计划列表 -->
+                <div id="plan-list" class="space-y-2 collapse-content collapse-open">
+                    <div class="text-center text-gray-mid py-3 text-sm" id="plan-empty">暂无今日计划，添加开始你的高效一天吧～</div>
+                </div>
+            </div>
+
+            <!-- 日常习惯模块 -->
+            <div class="bg-light rounded-lg p-3 card-hover">
+                <div class="flex justify-between items-center mb-3 cursor-pointer" id="habit-collapse-header">
+                    <h3 class="font-medium text-gray-dark flex items-center gap-2 text-sm"><i class="fa fa-calendar-check-o text-primary"></i> 日常习惯</h3>
+                    <span class="text-gray-mid text-xs"><i class="fa fa-chevron-down" id="habit-collapse-icon"></i></span>
+                </div>
+                <!-- 习惯添加 -->
+                <div class="flex flex-col gap-2 mb-3 collapse-content" id="habit-collapse">
+                    <div class="flex gap-2">
+                        <input type="text" id="habit-input" placeholder="输入日常习惯（如：阅读30分钟）" class="flex-1 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                        <select id="habit-type" class="px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                            <option value="daily">每日习惯</option>
+                            <option value="weekly">每周习惯</option>
+                        </select>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="time" id="habit-reminder" class="flex-1 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm" placeholder="提醒时间（可选）">
+                        <button id="add-habit" class="px-3 py-1.5 bg-primary text-white rounded-full hover:bg-primary/90 text-sm">添加习惯</button>
+                    </div>
+                </div>
+                <!-- 习惯列表 -->
+                <div id="habit-list" class="space-y-2 collapse-content">
+                    <div class="text-center text-gray-mid py-3 text-sm" id="habit-empty">暂无添加习惯，培养自律从这里开始～</div>
+                </div>
+            </div>
+
+            <!-- 长期目标模块 -->
+            <div class="bg-light rounded-lg p-3 card-hover">
+                <div class="flex justify-between items-center mb-3 cursor-pointer" id="goal-collapse-header">
+                    <h3 class="font-medium text-gray-dark flex items-center gap-2 text-sm"><i class="fa fa-flag text-primary"></i> 长期目标</h3>
+                    <span class="text-gray-mid text-xs"><i class="fa fa-chevron-down" id="goal-collapse-icon"></i></span>
+                </div>
+                <!-- 目标添加 -->
+                <div class="flex flex-col gap-2 mb-3 collapse-content" id="goal-collapse">
+                    <div class="flex gap-2">
+                        <input type="text" id="goal-input" placeholder="输入长期目标（如：学会Python）" class="flex-1 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm">
+                        <input type="number" id="goal-stage" placeholder="阶段数" class="w-16 px-2 py-1.5 border border-light rounded-full focus:outline-none focus:ring-1 focus:ring-primary text-sm" min="1" value="3">
+                    </div>
+                    <button id="add-goal" class="w-full px-3 py-1.5 bg-primary text-white rounded-full hover:bg-primary/90 text-sm">添加目标</button>
+                </div>
+                <!-- 目标列表 -->
+                <div id="goal-list" class="space-y-3 collapse-content">
+                    <div class="text-center text-gray-mid py-3 text-sm" id="goal-empty">暂无长期目标，立下你的flag吧～</div>
+                </div>
+            </div>
+
+            <!-- 数据分析模块 -->
+            <div class="bg-light rounded-lg p-3 card-hover">
+                <div class="flex justify-between items-center mb-3 cursor-pointer" id="data-collapse-header">
+                    <h3 class="font-medium text-gray-dark flex items-center gap-2 text-sm"><i class="fa fa-bar-chart text-primary"></i> 数据分析</h3>
+                    <span class="text-gray-mid text-xs"><i class="fa fa-chevron-down" id="data-collapse-icon"></i></span>
+                </div>
+                <!-- 数据维度切换 -->
+                <div class="flex gap-2 mb-3 collapse-content" id="data-collapse">
+                    <button class="data-tab active px-3 py-1 rounded-full bg-primary text-white text-xs" data-tab="day">今日</button>
+                    <button class="data-tab px-3 py-1 rounded-full bg-light text-gray-dark text-xs" data-tab="week">本周</button>
+                    <button class="data-tab px-3 py-1 rounded-full bg-light text-gray-dark text-xs" data-tab="month">本月</button>
+                </div>
+                <!-- 图表容器 -->
+                <div class="h-48 collapse-content collapse-open relative" id="data-chart-collapse">
+                    <canvas id="pomodoro-chart"></canvas>
+                    <div id="no-data-message" class="absolute inset-0 flex flex-col items-center justify-center text-gray-mid bg-light rounded-lg">
+                        <div class="text-primary text-5xl mb-3">📊</div>
+                        <h4 class="font-medium text-gray-dark mb-1">开始你的番茄之旅</h4>
+                        <p class="text-sm text-center max-w-xs px-4">完成第一个番茄钟后，这里会显示你的专注数据和趋势图表</p>
+                        <button id="start-first-pomo-btn" class="mt-3 px-4 py-1.5 bg-primary text-white rounded-full text-sm hover:bg-primary/90">
+                            <i class="fa fa-play mr-1"></i> 开始第一个番茄
+                        </button>
+                    </div>
+                </div>
+                <!-- 数据指标 -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 collapse-content" id="data-metric-collapse">
+                    <div class="bg-light p-2 rounded-lg text-center">
+                        <p class="text-xs text-gray-mid">番茄完成率</p>
+                        <p id="pomo-rate" class="font-bold text-primary text-sm">0%</p>
+                    </div>
+                    <div class="bg-light p-2 rounded-lg text-center">
+                        <p class="text-xs text-gray-mid">计划完成率</p>
+                        <p id="plan-rate" class="font-bold text-primary text-sm">0%</p>
+                    </div>
+                    <div class="bg-light p-2 rounded-lg text-center">
+                        <p class="text-xs text-gray-mid">习惯打卡率</p>
+                        <p id="habit-rate" class="font-bold text-primary text-sm">0%</p>
+                    </div>
+                    <div class="bg-light p-2 rounded-lg text-center">
+                        <p class="text-xs text-gray-mid">平均专注时长</p>
+                        <p id="avg-focus" class="font-bold text-primary text-sm">0分钟</p>
+                    </div>
+                </div>
+                
+                <!-- 番茄明细 -->
+                <div class="mt-3 collapse-content" id="pomo-detail-collapse">
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="font-medium text-gray-dark text-sm">番茄明细</h4>
+                        <select id="pomo-tag-filter" class="px-2 py-1 border border-light rounded-full text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                            <option value="all">全部标签</option>
+                            <option value="work">工作</option>
+                            <option value="study">学习</option>
+                            <option value="life">生活</option>
+                        </select>
+                    </div>
+                    <div id="pomo-detail-list" class="max-h-32 overflow-y-auto text-sm">
+                        <div class="text-center text-gray-mid py-2 text-xs">暂无番茄记录</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ================= 全局状态与DOM元素 =================
+        let timer = null;
+        let isRunning = false;
+        let isWorkMode = true;
+        let timeLeft = 25 * 60;
+        let workTime = 25 * 60;
+        let breakTime = 5 * 60;
+        let currentBindPlan = null; // 当前关联的今日计划ID
+        let currentPomoTag = 'work'; // 当前番茄标签：work/study/life
+
+        // 统计数据
+        let stats = { completedPomodoros: 0, focusTime: 0, currentStreak: 0 };
+        // 模块数据（计划/习惯/目标）
+        let plans = JSON.parse(localStorage.getItem('pomodoroPlans')) || [];
+        let habits = JSON.parse(localStorage.getItem('pomodoroHabits')) || [];
+        let goals = JSON.parse(localStorage.getItem('pomodoroGoals')) || [];
+        // 新增：计划模板
+        let planTemplates = JSON.parse(localStorage.getItem('pomodoroPlanTemplates')) || [];
+        // 新增：用户设置
+        let settings = JSON.parse(localStorage.getItem('pomodoroSettings')) || {
+            theme: 'light', // light, dark
+            primaryColor: 'tomato', // tomato, blue, green, purple
+            fontSize: 'medium', // small, medium, large
+            whiteNoise: {
+                enabled: false,
+                type: 'cafe', // cafe, rain, library, nature
+                volume: 0.5,
+                playDuringBreak: false
+            }
+        };
+        // 打卡/完成记录
+        let records = JSON.parse(localStorage.getItem('pomodoroRecords')) || {
+            pomo: [], plan: [], habit: [], focus: []
+        };
+        // 新增：白噪音音频对象
+        let audioContext = null;
+        let currentAudio = null;
+
+        // DOM元素
+        const [timerDisplay, timerStatus, timerRing] = ['timer-display', 'timer-status', 'timer-ring'].map(id => document.getElementById(id));
+        const [startBtn, resetBtn, workMode, breakMode] = ['start-btn', 'reset-btn', 'work-mode', 'break-mode'].map(id => document.getElementById(id));
+        const [workTimeInput, breakTimeInput] = ['work-time', 'break-time'].map(id => document.getElementById(id));
+        const [completedPomodoros, focusTime, currentStreak] = ['completed-pomodoros', 'focus-time', 'current-streak'].map(id => document.getElementById(id));
+        // 计划模块
+        const [planInput, planPomo, addPlan, planList, planEmpty] = ['plan-input', 'plan-pomo', 'add-plan', 'plan-list', 'plan-empty'].map(id => document.getElementById(id));
+        // 习惯模块
+        const [habitInput, habitType, addHabit, habitList, habitEmpty] = ['habit-input', 'habit-type', 'add-habit', 'habit-list', 'habit-empty'].map(id => document.getElementById(id));
+        // 目标模块
+        const [goalInput, goalStage, addGoal, goalList, goalEmpty] = ['goal-input', 'goal-stage', 'add-goal', 'goal-list', 'goal-empty'].map(id => document.getElementById(id));
+        // 折叠模块
+        const collapseHeaders = ['plan', 'habit', 'goal', 'data'].map(prefix => document.getElementById(`${prefix}-collapse-header`));
+        const collapseIcons = ['plan', 'habit', 'goal', 'data'].map(prefix => document.getElementById(`${prefix}-collapse-icon`));
+        const collapseContents = ['plan', 'habit', 'goal', 'data'].map(prefix => [
+            document.getElementById(`${prefix}-collapse`),
+            document.getElementById(`${prefix}-list-collapse`) || document.getElementById(`${prefix}-chart-collapse`),
+            document.getElementById(`${prefix}-metric-collapse`) || null
+        ]).flat().filter(Boolean);
+        // 数据分析
+        const dataTabs = document.querySelectorAll('.data-tab');
+        const pomodoroChart = document.getElementById('pomodoro-chart');
+        let chartInstance = null;
+        const [pomoRate, planRate, habitRate, avgFocus] = ['pomo-rate', 'plan-rate', 'habit-rate', 'avg-focus'].map(id => document.getElementById(id));
+
+        // ================= 初始化 =================
+        init();
+        function init() {
+            // 加载本地存储的数据
+            records = JSON.parse(localStorage.getItem('pomodoroRecords')) || {
+                pomo: [], plan: [], habit: [], focus: []
+            };
+            plans = JSON.parse(localStorage.getItem('pomodoroPlans')) || [];
+            habits = JSON.parse(localStorage.getItem('pomodoroHabits')) || [];
+            goals = JSON.parse(localStorage.getItem('pomodoroGoals')) || [];
+            planTemplates = JSON.parse(localStorage.getItem('pomodoroPlanTemplates')) || [];
+            
+            // 重置统计数据，改为从records计算
+            stats = {
+                completedPomodoros: 0,
+                focusTime: 0,
+                currentStreak: 0
+            };
+            
+            // 初始化圆环
+            const ringRadius = timerRing.r.baseVal.value;
+            const ringCircumference = 2 * Math.PI * ringRadius;
+            timerRing.style.strokeDasharray = ringCircumference;
+            // 绑定事件
+            bindEvents();
+            // 渲染模块
+            renderPlans();
+            renderHabits();
+            renderGoals();
+            renderPomoDetail();
+            // 更新计时器和统计
+            updateTimerDisplay();
+            updateStatsDisplay();
+            // 初始化图表
+            initChart('day');
+            // 更新数据指标
+            updateDataMetrics('day');
+            // 启动习惯提醒检查（每分钟检查一次）
+            setInterval(checkHabitReminders, 60000);
+            // 立即检查一次
+            checkHabitReminders();
+            
+            // 新增：初始化主题
+            applyTheme();
+            
+            // 新增：初始化模板选择器
+            updateTemplateSelect();
+            
+            // 新增：初始化目标选择器
+            updateGoalSelect();
+            
+            // 新增：设置初始白噪音状态
+            if (settings.whiteNoise.enabled) {
+                document.getElementById('whitenoise-toggle').innerHTML = '<i class="fa fa-volume-off"></i> 关闭';
+            } else {
+                document.getElementById('whitenoise-toggle').innerHTML = '<i class="fa fa-volume-up"></i> 开启';
+            }
+            
+            // 新增：设置初始音量
+            document.getElementById('whitenoise-volume').value = settings.whiteNoise.volume;
+            
+            // 新增：设置休息时播放选项
+            document.getElementById('play-during-break').checked = settings.whiteNoise.playDuringBreak;
+            
+            // 新增：设置初始主色
+            document.getElementById('primary-color').value = settings.primaryColor;
+            
+            // 新增：设置初始字体大小按钮状态
+            document.querySelectorAll('.font-size-btn').forEach(btn => {
+                if (btn.dataset.size === settings.fontSize) {
+                    btn.classList.add('bg-light/80');
+                }
+            });
+        }
+
+        // ================= 番茄计时器核心功能 =================
+        // 格式化时间：秒 -> MM:SS
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        // 更新圆环进度
+        function updateRingProgress(progress) {
+            const ringCircumference = 2 * Math.PI * timerRing.r.baseVal.value;
+            timerRing.style.strokeDashoffset = ringCircumference * (1 - progress);
+        }
+        // 更新计时器显示
+        function updateTimerDisplay() {
+            timerDisplay.textContent = formatTime(timeLeft);
+            const totalTime = isWorkMode ? workTime : breakTime;
+            const progress = timeLeft / totalTime;
+            updateRingProgress(progress);
+            // 更新状态文本
+            if (isRunning) {
+                timerStatus.textContent = isWorkMode 
+                    ? (currentBindPlan ? `专注工作中（关联：${getPlanName(currentBindPlan)}）` : '专注工作中...') 
+                    : '休息放松中...';
+            } else {
+                timerStatus.textContent = isWorkMode 
+                    ? (currentBindPlan ? `准备开始（关联：${getPlanName(currentBindPlan)}）` : '准备开始工作') 
+                    : '准备开始休息';
+            }
+            // 更新圆环颜色
+            timerRing.className = 'timer-ring cx-50 cy-50 r-45 fill-none stroke-transparent stroke-4';
+            timerRing.style.stroke = 'transparent';
+            timerRing.style.opacity = '1';
+        }
+        // 切换工作/休息模式
+        function toggleMode(mode) {
+            if (isRunning) return;
+            isWorkMode = mode === 'work';
+            timeLeft = isWorkMode ? workTime : breakTime;
+            // 更新按钮样式
+            if (isWorkMode) {
+                workMode.classList.add('bg-primary', 'text-white');
+                workMode.classList.remove('bg-transparent', 'text-gray-dark');
+                breakMode.classList.add('bg-transparent', 'text-gray-dark');
+                breakMode.classList.remove('bg-primary', 'text-white');
+            } else {
+                breakMode.classList.add('bg-primary', 'text-white');
+                breakMode.classList.remove('bg-transparent', 'text-gray-dark');
+                workMode.classList.add('bg-transparent', 'text-gray-dark');
+                workMode.classList.remove('bg-primary', 'text-white');
+            }
+            
+            // 新增：处理白噪音播放
+            if (settings.whiteNoise.enabled) {
+                if (isWorkMode) {
+                    // 切换到工作模式，播放白噪音
+                    playWhiteNoise();
+                } else {
+                    // 切换到休息模式
+                    if (settings.whiteNoise.playDuringBreak) {
+                        playWhiteNoise();
+                    } else {
+                        stopWhiteNoise();
+                    }
+                }
+            }
+            
+            updateTimerDisplay();
+        }
+        // 开始/暂停计时器
+        function toggleTimer() {
+            if (isRunning) {
+                clearInterval(timer);
+                startBtn.innerHTML = '<i class="fa fa-play"></i> 开始';
+                timerStatus.textContent = isWorkMode ? '工作已暂停' : '休息已暂停';
+                // 停止白噪音
+                stopWhiteNoise();
+            } else {
+                // 播放白噪音（工作模式或休息模式且设置了休息时播放）
+                if (settings.whiteNoise.enabled && (isWorkMode || settings.whiteNoise.playDuringBreak)) {
+                    playWhiteNoise();
+                }
+                
+                timer = setInterval(() => {
+                    timeLeft--;
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        isRunning = false;
+                        startBtn.innerHTML = '<i class="fa fa-play"></i> 开始';
+                        // 播放提示音
+                        new Audio('https://assets.mixkit.co/sfx/preview/mixkit-alarm-digital-clock-beep-989.mp3').play();
+                        // 工作结束：统计番茄、关联计划、开始一分钟休息
+                        if (isWorkMode) {
+                            stats.completedPomodoros++;
+                            stats.focusTime += workTime / 60;
+                            stats.currentStreak++;
+                            updateStatsDisplay();
+                            saveStats();
+                            // 记录番茄数据
+                            recordPomo();
+                            // 关联计划：累计番茄数
+                            if (currentBindPlan) updatePlanPomo(currentBindPlan);
+                            timerStatus.textContent = '工作完成！开始一分钟休息';
+                            
+                            // 显示番茄完成动效
+                            const timerCircle = document.querySelector('.timer-circle');
+                            if (timerCircle) {
+                                showCompletionEffect(timerCircle);
+                            }
+                            
+                            // 开始一分钟休息
+                            const oneMinuteBreak = 60; // 1分钟休息
+                            timeLeft = oneMinuteBreak;
+                            isWorkMode = false;
+                            updateTimerDisplay();
+                            
+                            // 启动一分钟休息计时器
+                            const breakTimer = setInterval(() => {
+                                timeLeft--;
+                                if (timeLeft <= 0) {
+                                    clearInterval(breakTimer);
+                                    // 一分钟休息结束：询问是否开始完整休息模式
+                                    timerStatus.textContent = '短休息结束！';
+                                    
+                                    // 显示休息模式询问
+                                    const restModeNotification = document.createElement('div');
+                                    restModeNotification.className = 'fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4';
+                                    restModeNotification.innerHTML = `
+                                        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                                            <div class="text-center mb-4">
+                                                <div class="text-primary text-4xl mb-3">🍅</div>
+                                                <h3 class="text-xl font-bold text-gray-dark">休息模式</h3>
+                                                <p class="text-gray-mid mt-2">是否开始完整的休息模式？</p>
+                                            </div>
+                                            <div class="flex gap-3">
+                                                <button id="start-rest-mode-btn" class="flex-1 px-4 py-2 bg-primary text-white rounded-full hover:bg-primary/90">
+                                                    开始休息
+                                                </button>
+                                                <button id="skip-rest-mode-btn" class="flex-1 px-4 py-2 bg-light dark:bg-gray-700 text-gray-dark rounded-full hover:bg-light/80">
+                                                    直接工作
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `;
+                                    document.body.appendChild(restModeNotification);
+                                    
+                                    // 自动开始下一个工作番茄钟（10秒无操作）
+                                    const autoStartTimer = setTimeout(() => {
+                                        if (document.body.contains(restModeNotification)) {
+                                            document.body.removeChild(restModeNotification);
+                                            toggleMode('work');
+                                            toggleTimer();
+                                        }
+                                    }, 10000);
+                                    
+                                    // 开始休息模式按钮
+                                    const startRestModeBtn = document.getElementById('start-rest-mode-btn');
+                                    if (startRestModeBtn) {
+                                        startRestModeBtn.addEventListener('click', () => {
+                                            clearTimeout(autoStartTimer);
+                                            document.body.removeChild(restModeNotification);
+                                            // 切换到完整的休息模式
+                                            toggleMode('break');
+                                            toggleTimer();
+                                        });
+                                    }
+                                    
+                                    // 跳过休息模式按钮
+                                    const skipRestModeBtn = document.getElementById('skip-rest-mode-btn');
+                                    if (skipRestModeBtn) {
+                                        skipRestModeBtn.addEventListener('click', () => {
+                                            clearTimeout(autoStartTimer);
+                                            document.body.removeChild(restModeNotification);
+                                            // 直接开始下一个工作番茄钟
+                                            toggleMode('work');
+                                            toggleTimer();
+                                        });
+                                    }
+                                }
+                                updateTimerDisplay();
+                            }, 1000);
+                        } else {
+                            // 休息模式结束：切换到工作模式
+                            timerStatus.textContent = '休息结束！开始新的工作番茄钟';
+                            setTimeout(() => {
+                                toggleMode('work');
+                                toggleTimer();
+                            }, 2000);
+                        }
+                    }
+                    updateTimerDisplay();
+                }, 1000);
+                startBtn.innerHTML = '<i class="fa fa-pause"></i> 暂停';
+            }
+            isRunning = !isRunning;
+        }
+        // 重置计时器
+        function resetTimer() {
+            clearInterval(timer);
+            isRunning = false;
+            timeLeft = isWorkMode ? workTime : breakTime;
+            startBtn.innerHTML = '<i class="fa fa-play"></i> 开始';
+            currentBindPlan = null;
+            updateTimerDisplay();
+        }
+        // 更新时间设置
+        function updateTimeSettings() {
+            workTime = parseInt(workTimeInput.value) * 60;
+            breakTime = parseInt(breakTimeInput.value) * 60;
+            if (!isRunning) {
+                timeLeft = isWorkMode ? workTime : breakTime;
+                updateTimerDisplay();
+            }
+        }
+        // 保存统计数据
+        function saveStats() {
+            localStorage.setItem('pomodoroStats', JSON.stringify(stats));
+        }
+        // 更新统计显示
+        function updateStatsDisplay() {
+            const today = new Date().toDateString();
+            
+            // 计算当天完成的番茄数
+            const todayPomodoros = records.pomo.filter(record => record.date === today).length;
+            
+            // 计算当天的专注时长（分钟）
+            const todayFocusTime = records.pomo
+                .filter(record => record.date === today)
+                .reduce((total, record) => total + record.duration, 0);
+            
+            // 连续完成保持为当前会话的连续记录
+            
+            // 更新显示
+            completedPomodoros.textContent = todayPomodoros;
+            focusTime.textContent = `${Math.round(todayFocusTime)}分钟`;
+            currentStreak.textContent = stats.currentStreak;
+        }
+
+        // ================= 今日计划模块 =================
+        // 生成唯一ID
+        function generateId() {
+            return Date.now() + Math.random().toString(36).substr(2, 5);
+        }
+        // 获取计划名称
+        function getPlanName(id) {
+            const plan = plans.find(p => p.id === id);
+            return plan ? plan.name : '';
+        }
+        // 添加计划
+        function addPlanItem() {
+            const name = planInput.value.trim();
+            const expectPomo = parseInt(planPomo.value);
+            const priority = document.getElementById('plan-priority').value;
+            const goalId = document.getElementById('goal-select').value;
+            const stageId = document.getElementById('stage-select').value;
+            
+            if (!name || isNaN(expectPomo)) return;
+            // 番茄数上限限制
+            const maxPomo = 20;
+            if (expectPomo > maxPomo) {
+                alert(`预计番茄数不能超过${maxPomo}个，请设置合理的目标。`);
+                planPomo.value = maxPomo;
+                return;
+            }
+            const newPlan = {
+                id: generateId(),
+                name,
+                expectPomo,
+                finishPomo: 0,
+                isCompleted: false,
+                priority,
+                createTime: new Date().toLocaleDateString(),
+                order: Date.now(), // 用于拖拽排序
+                relatedGoalId: goalId || null,
+                relatedStageId: stageId || null
+            };
+            plans.push(newPlan);
+            savePlans();
+            renderPlans();
+            planInput.value = '';
+            planPomo.value = 1;
+            document.getElementById('plan-priority').value = 'medium';
+            document.getElementById('goal-select').value = '';
+            document.getElementById('stage-select').value = '';
+            document.getElementById('stage-select').disabled = true;
+        }
+        // 渲染计划列表
+        function renderPlans() {
+            if (plans.length === 0) {
+                planList.innerHTML = '';
+                planEmpty.classList.remove('hidden');
+                return;
+            }
+            planEmpty.classList.add('hidden');
+            
+            // 按优先级和创建时间排序
+            const sortedPlans = [...plans].sort((a, b) => {
+                const priorityOrder = { high: 0, medium: 1, low: 2 };
+                if (priorityOrder[a.priority] !== priorityOrder[b.priority]) {
+                    return priorityOrder[a.priority] - priorityOrder[b.priority];
+                }
+                return (a.order || 0) - (b.order || 0);
+            });
+            
+            planList.innerHTML = sortedPlans.map(plan => {
+                const priorityClass = plan.priority === 'high' ? 'text-primary font-medium' : 
+                                     plan.priority === 'medium' ? 'text-gray-dark' : 'text-gray-mid';
+                const priorityText = plan.priority === 'high' ? '🔴' : 
+                                    plan.priority === 'medium' ? '🟡' : '🔵';
+                return `
+                    <div class="flex items-center justify-between p-2 border-b border-light list-hover drag-item fade-in card-hover ${plan.isCompleted ? 'opacity-60 line-through' : ''}" 
+                         draggable="true" data-plan-id="${plan.id}"
+                         ondragover="event.preventDefault()"
+                         ondrop="handlePlanDrop(event, '${plan.id}')"
+                         ondragstart="handlePlanDragStart(event, '${plan.id}')"
+                         onclick="completePlan('${plan.id}')">
+                        <div class="flex items-center gap-2">
+                            <span class="${priorityClass}">${priorityText} ${plan.name} <small class="text-gray-mid">(${plan.finishPomo}/${plan.expectPomo}番茄)</small></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="bindPlan('${plan.id}')" class="text-blue hover:text-blue/80" title="关联番茄计时器">
+                                <i class="fa fa-link ${currentBindPlan === plan.id ? 'text-primary' : ''}"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); deletePlan('${plan.id}')" class="text-gray-mid hover:text-primary">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        // 关联计划到计时器
+        function bindPlan(id) {
+            currentBindPlan = currentBindPlan === id ? null : id;
+            updateTimerDisplay();
+            renderPlans();
+        }
+        // 更新计划番茄数
+        function updatePlanPomo(id) {
+            const plan = plans.find(p => p.id === id);
+            if (!plan || plan.isCompleted) return;
+            plan.finishPomo++;
+            // 完成条件：实际番茄数≥预计番茄数
+            if (plan.finishPomo >= plan.expectPomo) plan.isCompleted = true;
+            savePlans();
+            renderPlans();
+            // 记录计划完成
+            recordPlan(plan.id);
+            // 更新数据分析
+            updateDataMetrics(getActiveTab());
+        }
+        // 标记计划完成
+        function completePlan(id) {
+            const plan = plans.find(p => p.id === id);
+            if (!plan) return;
+            plan.isCompleted = !plan.isCompleted;
+            savePlans();
+            renderPlans();
+            recordPlan(id);
+            updateDataMetrics(getActiveTab());
+            
+            // 新增：更新目标进度
+            if (plan.isCompleted && plan.relatedGoalId && plan.relatedStageId) {
+                updateGoalProgressOnPlanComplete(plan);
+            }
+            
+            // 显示完成动效
+            const planElement = document.querySelector(`[data-plan-id="${id}"]`);
+            if (planElement && plan.isCompleted) {
+                showCompletionEffect(planElement);
+            }
+        }
+        // 删除计划
+        function deletePlan(id) {
+            if (confirm('确定删除该计划吗？')) {
+                plans = plans.filter(p => p.id !== id);
+                if (currentBindPlan === id) currentBindPlan = null;
+                savePlans();
+                renderPlans();
+                updateTimerDisplay();
+            }
+        }
+        // 保存计划
+        function savePlans() {
+            localStorage.setItem('pomodoroPlans', JSON.stringify(plans));
+        }
+
+        // ================= 日常习惯模块 =================
+        // 添加习惯
+        function addHabitItem() {
+            const name = habitInput.value.trim();
+            const type = habitType.value;
+            const reminder = document.getElementById('habit-reminder').value;
+            if (!name) return;
+            const newHabit = {
+                id: generateId(),
+                name,
+                type,
+                reminder,
+                streak: 0,
+                lastCheckin: null,
+                checkins: []
+            };
+            habits.push(newHabit);
+            saveHabits();
+            renderHabits();
+            habitInput.value = '';
+            document.getElementById('habit-reminder').value = '';
+            // 设置提醒
+            if (reminder && 'Notification' in window) {
+                requestNotificationPermission();
+            }
+        }
+        // 渲染习惯列表
+        function renderHabits() {
+            if (habits.length === 0) {
+                habitList.innerHTML = '';
+                habitEmpty.classList.remove('hidden');
+                return;
+            }
+            habitEmpty.classList.add('hidden');
+            habitList.innerHTML = habits.map(habit => {
+                const isCheckedToday = isHabitCheckedToday(habit);
+                const streak = getHabitStreak(habit);
+                return `
+                    <div class="flex items-center justify-between p-2 border-b border-light list-hover" data-habit-id="${habit.id}">
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleHabitCheckin('${habit.id}')" class="w-4 h-4 rounded-full flex items-center justify-center ${isCheckedToday ? 'bg-primary text-white' : 'border border-light text-gray-mid'}">
+                                ${isCheckedToday ? '<i class="fa fa-check text-xs"></i>' : ''}
+                            </button>
+                            <span>${habit.name} <small class="text-gray-mid">${habit.type === 'daily' ? '每日' : '每周'} · 连续${streak}天</small></span>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="event.stopPropagation(); deleteHabit('${habit.id}')" class="text-gray-mid hover:text-primary">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        // 检查今日是否已打卡
+        function isHabitCheckedToday(habit) {
+            const today = new Date().toDateString();
+            return habit.checkins.includes(today);
+        }
+        // 获取习惯连续打卡天数
+        function getHabitStreak(habit) {
+            if (habit.checkins.length === 0) return 0;
+            let streak = 0;
+            const today = new Date();
+            for (let i = 0; i < 365; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toDateString();
+                if (habit.checkins.includes(dateStr)) {
+                    streak++;
+                } else {
+                    break;
+                }
+            }
+            return streak;
+        }
+        // 切换习惯打卡状态
+        function toggleHabitCheckin(id) {
+            const habit = habits.find(h => h.id === id);
+            if (!habit) return;
+            const today = new Date().toDateString();
+            const checkinIndex = habit.checkins.indexOf(today);
+            const isNewCheckin = checkinIndex === -1;
+            
+            if (checkinIndex > -1) {
+                habit.checkins.splice(checkinIndex, 1);
+            } else {
+                habit.checkins.push(today);
+                habit.lastCheckin = today;
+            }
+            saveHabits();
+            renderHabits();
+            recordHabit(id);
+            updateDataMetrics(getActiveTab());
+            
+            // 显示完成动效（仅在新打卡时）
+            if (isNewCheckin) {
+                const habitElement = document.querySelector(`[data-habit-id="${id}"]`);
+                if (habitElement) {
+                    showCompletionEffect(habitElement);
+                }
+            }
+        }
+        // 删除习惯
+        function deleteHabit(id) {
+            if (confirm('确定删除该习惯吗？')) {
+                habits = habits.filter(h => h.id !== id);
+                saveHabits();
+                renderHabits();
+            }
+        }
+        // 保存习惯
+        function saveHabits() {
+            localStorage.setItem('pomodoroHabits', JSON.stringify(habits));
+        }
+
+        // ================= 长期目标模块 =================
+        // 添加目标
+        function addGoalItem() {
+            const name = goalInput.value.trim();
+            const stageCount = parseInt(goalStage.value);
+            if (!name || isNaN(stageCount)) return;
+            const stages = Array.from({length: stageCount}, (_, i) => ({
+                id: generateId(),
+                name: `阶段${i + 1}`,
+                isCompleted: false
+            }));
+            const newGoal = {
+                id: generateId(),
+                name,
+                stages,
+                createTime: new Date().toLocaleDateString()
+            };
+            goals.push(newGoal);
+            saveGoals();
+            renderGoals();
+            updateGoalSelect(); // 新增：更新目标选择器
+            goalInput.value = '';
+            goalStage.value = 3;
+        }
+        // 渲染目标列表
+        function renderGoals() {
+            if (goals.length === 0) {
+                goalList.innerHTML = '';
+                goalEmpty.classList.remove('hidden');
+                return;
+            }
+            goalEmpty.classList.add('hidden');
+            goalList.innerHTML = goals.map(goal => {
+                const completedStages = goal.stages.filter(s => s.isCompleted).length;
+                const totalStages = goal.stages.length;
+                const progress = (completedStages / totalStages) * 100;
+                return `
+                    <div class="p-3 border-b border-light list-hover">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-medium text-gray-dark">${goal.name}</h4>
+                            <button onclick="event.stopPropagation(); deleteGoal('${goal.id}')" class="text-gray-mid hover:text-primary">
+                                <i class="fa fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="mb-2">
+                            <div class="flex justify-between text-xs text-gray-mid mb-1">
+                                <span>进度</span>
+                                <span>${completedStages}/${totalStages}</span>
+                            </div>
+                            <div class="w-full bg-light rounded-full h-2">
+                                <div class="bg-primary h-2 rounded-full" style="width: ${progress}%"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-1">
+                            ${goal.stages.map(stage => `
+                                <button onclick="toggleGoalStage('${goal.id}', '${stage.id}')" 
+                                    class="text-xs py-1 px-2 rounded ${stage.isCompleted ? 'bg-primary text-white' : 'bg-light text-gray-dark'}">
+                                    ${stage.name}
+                                </button>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        // 切换目标阶段完成状态
+        function toggleGoalStage(goalId, stageId) {
+            const goal = goals.find(g => g.id === goalId);
+            if (!goal) return;
+            const stage = goal.stages.find(s => s.id === stageId);
+            if (!stage) return;
+            stage.isCompleted = !stage.isCompleted;
+            saveGoals();
+            renderGoals();
+        }
+        // 删除目标
+        function deleteGoal(id) {
+            if (confirm('确定删除该目标吗？')) {
+                goals = goals.filter(g => g.id !== id);
+                saveGoals();
+                renderGoals();
+            }
+        }
+        // 保存目标
+        function saveGoals() {
+            localStorage.setItem('pomodoroGoals', JSON.stringify(goals));
+        }
+
+        // ================= 数据分析模块 =================
+        // 初始化图表
+        function initChart(period) {
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+            const ctx = pomodoroChart.getContext('2d');
+            const data = getChartData(period);
+            
+            // 检查是否有数据
+            const hasData = data.pomo.some(value => value > 0) || 
+                           data.plan.some(value => value > 0) || 
+                           data.habit.some(value => value > 0);
+            
+            if (!hasData) {
+                // 显示空数据提示
+                pomodoroChart.style.display = 'none';
+                document.getElementById('no-data-message').style.display = 'flex';
+                return;
+            } else {
+                // 隐藏空数据提示，显示图表
+                pomodoroChart.style.display = 'block';
+                document.getElementById('no-data-message').style.display = 'none';
+            }
+            
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: '番茄数',
+                            data: data.pomo,
+                            backgroundColor: 'var(--primary-color)',
+                            borderColor: 'var(--primary-color)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '完成计划数',
+                            data: data.plan,
+                            backgroundColor: 'color-mix(in srgb, var(--primary-color) 30%, transparent)',
+                            borderColor: 'var(--primary-color)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: '打卡习惯数',
+                            data: data.habit,
+                            backgroundColor: 'color-mix(in srgb, var(--primary-color) 60%, transparent)',
+                            borderColor: 'var(--primary-color)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
+                                    size: 10
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        // 获取图表数据
+        function getChartData(period) {
+            const today = new Date();
+            let labels = [];
+            let pomoData = [];
+            let planData = [];
+            let habitData = [];
+
+            if (period === 'day') {
+                // 今日每小时数据
+                for (let i = 0; i < 24; i++) {
+                    labels.push(`${i}:00`);
+                    pomoData.push(getPomoCountByHour(today, i));
+                    planData.push(getPlanCountByHour(today, i));
+                    habitData.push(getHabitCountByHour(today, i));
+                }
+            } else if (period === 'week') {
+                // 本周每天数据
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    labels.push(getWeekdayName(date));
+                    pomoData.push(getPomoCountByDate(date));
+                    planData.push(getPlanCountByDate(date));
+                    habitData.push(getHabitCountByDate(date));
+                }
+            } else if (period === 'month') {
+                // 本月每天数据
+                const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                for (let i = 0; i < daysInMonth; i++) {
+                    const date = new Date(today.getFullYear(), today.getMonth(), i + 1);
+                    if (date > today) break;
+                    labels.push(`${i + 1}日`);
+                    pomoData.push(getPomoCountByDate(date));
+                    planData.push(getPlanCountByDate(date));
+                    habitData.push(getHabitCountByDate(date));
+                }
+            }
+
+            return { labels, pomo: pomoData, plan: planData, habit: habitData };
+        }
+        // 获取星期名称
+        function getWeekdayName(date) {
+            const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+            return weekdays[date.getDay()];
+        }
+        // 获取指定小时的番茄数
+        function getPomoCountByHour(date, hour) {
+            const dateStr = date.toDateString();
+            return records.pomo.filter(r => 
+                r.date === dateStr && 
+                new Date(r.time).getHours() === hour
+            ).length;
+        }
+        // 获取指定日期的番茄数
+        function getPomoCountByDate(date) {
+            const dateStr = date.toDateString();
+            return records.pomo.filter(r => r.date === dateStr).length;
+        }
+        // 获取指定日期的标签番茄数
+        function getPomoCountByTag(date, tag) {
+            const dateStr = date.toDateString();
+            return records.pomo.filter(r => r.date === dateStr && r.tag === tag).length;
+        }
+        // 获取指定小时的计划完成数
+        function getPlanCountByHour(date, hour) {
+            const dateStr = date.toDateString();
+            return records.plan.filter(r => 
+                r.date === dateStr && 
+                new Date(r.time).getHours() === hour
+            ).length;
+        }
+        // 获取指定日期的计划完成数
+        function getPlanCountByDate(date) {
+            const dateStr = date.toDateString();
+            return records.plan.filter(r => r.date === dateStr).length;
+        }
+        // 获取指定小时的习惯打卡数
+        function getHabitCountByHour(date, hour) {
+            const dateStr = date.toDateString();
+            return records.habit.filter(r => 
+                r.date === dateStr && 
+                new Date(r.time).getHours() === hour
+            ).length;
+        }
+        // 获取指定日期的习惯打卡数
+        function getHabitCountByDate(date) {
+            const dateStr = date.toDateString();
+            return records.habit.filter(r => r.date === dateStr).length;
+        }
+        // 更新数据指标
+        function updateDataMetrics(period) {
+            const today = new Date();
+            let days = 1;
+            if (period === 'week') days = 7;
+            else if (period === 'month') days = 30;
+
+            // 番茄完成率
+            const totalPomo = records.pomo.filter(r => {
+                const recordDate = new Date(r.date);
+                const diffDays = Math.floor((today - recordDate) / (1000 * 60 * 60 * 24));
+                return diffDays < days;
+            }).length;
+            const avgPomoPerDay = Math.round(totalPomo / days);
+            pomoRate.textContent = `${avgPomoPerDay > 0 ? Math.min(100, Math.round((totalPomo / (avgPomoPerDay * days)) * 100)) : 0}%`;
+
+            // 计划完成率
+            const completedPlans = plans.filter(p => p.isCompleted).length;
+            planRate.textContent = `${plans.length > 0 ? Math.round((completedPlans / plans.length) * 100) : 0}%`;
+
+            // 习惯打卡率
+            let totalCheckins = 0;
+            let totalPossibleCheckins = 0;
+            habits.forEach(habit => {
+                const checkins = habit.checkins.filter(c => {
+                    const checkinDate = new Date(c);
+                    const diffDays = Math.floor((today - checkinDate) / (1000 * 60 * 60 * 24));
+                    return diffDays < (habit.type === 'daily' ? days : 4);
+                }).length;
+                totalCheckins += checkins;
+                totalPossibleCheckins += habit.type === 'daily' ? days : 4;
+            });
+            habitRate.textContent = `${totalPossibleCheckins > 0 ? Math.round((totalCheckins / totalPossibleCheckins) * 100) : 0}%`;
+
+            // 平均专注时长
+            const avgFocusTime = totalPomo > 0 ? Math.round((stats.focusTime / totalPomo) * 25) : 0;
+            avgFocus.textContent = `${avgFocusTime}分钟`;
+        }
+        // 获取当前激活的标签页
+        function getActiveTab() {
+            const activeTab = document.querySelector('.data-tab.active');
+            return activeTab ? activeTab.dataset.tab : 'day';
+        }
+        // 切换数据标签页
+        function switchDataTab(tab) {
+            dataTabs.forEach(t => t.classList.remove('active', 'bg-primary', 'text-white'));
+            dataTabs.forEach(t => t.classList.add('bg-light', 'text-gray-dark'));
+            const targetTab = document.querySelector(`[data-tab="${tab}"]`);
+            if (targetTab) {
+                targetTab.classList.add('active', 'bg-primary', 'text-white');
+                targetTab.classList.remove('bg-light', 'text-gray-dark');
+            }
+            initChart(tab);
+            updateDataMetrics(tab);
+        }
+
+        // ================= 记录数据 =================
+        // 记录番茄数据
+        function recordPomo() {
+            const pomoRecord = {
+                id: generateId(),
+                date: new Date().toDateString(),
+                time: new Date().toISOString(),
+                tag: currentPomoTag,
+                planId: currentBindPlan,
+                duration: workTime / 60
+            };
+            records.pomo.push(pomoRecord);
+            saveRecords();
+            // 更新番茄明细
+            renderPomoDetail();
+        }
+        // 记录计划完成
+        function recordPlan(planId) {
+            records.plan.push({
+                id: generateId(),
+                planId,
+                date: new Date().toDateString(),
+                time: new Date().toISOString()
+            });
+            saveRecords();
+        }
+        // 记录习惯打卡
+        function recordHabit(habitId) {
+            records.habit.push({
+                id: generateId(),
+                habitId,
+                date: new Date().toDateString(),
+                time: new Date().toISOString()
+            });
+            saveRecords();
+        }
+        // 保存记录
+        function saveRecords() {
+            localStorage.setItem('pomodoroRecords', JSON.stringify(records));
+        }
+
+        // ================= 事件绑定 =================
+        function bindEvents() {
+            // 计时器控制
+            startBtn.addEventListener('click', toggleTimer);
+            resetBtn.addEventListener('click', resetTimer);
+            workMode.addEventListener('click', () => toggleMode('work'));
+            breakMode.addEventListener('click', () => toggleMode('break'));
+            workTimeInput.addEventListener('change', updateTimeSettings);
+            breakTimeInput.addEventListener('change', updateTimeSettings);
+
+            // 番茄标签
+            document.getElementById('tag-work').addEventListener('click', () => switchPomoTag('work'));
+            document.getElementById('tag-study').addEventListener('click', () => switchPomoTag('study'));
+            document.getElementById('tag-life').addEventListener('click', () => switchPomoTag('life'));
+
+            // 计划模块
+            addPlan.addEventListener('click', addPlanItem);
+            planInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addPlanItem();
+            });
+            
+            // 新增：计划模板
+            document.getElementById('save-template-btn').addEventListener('click', saveAsTemplate);
+            document.getElementById('template-select').addEventListener('change', (e) => loadTemplate(e.target.value));
+            
+            // 新增：目标关联
+            document.getElementById('goal-select').addEventListener('change', (e) => updateStageSelect(e.target.value));
+
+            // 习惯模块
+            addHabit.addEventListener('click', addHabitItem);
+            habitInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addHabitItem();
+            });
+
+            // 目标模块
+            addGoal.addEventListener('click', addGoalItem);
+            goalInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addGoalItem();
+            });
+
+            // 数据备份
+            document.getElementById('export-data').addEventListener('click', exportData);
+            document.getElementById('import-data').addEventListener('click', () => {
+                document.getElementById('import-file').click();
+            });
+            document.getElementById('import-file').addEventListener('change', importData);
+
+            // 番茄明细筛选
+            document.getElementById('pomo-tag-filter').addEventListener('change', renderPomoDetail);
+
+            // 折叠模块
+            collapseHeaders.forEach((header, index) => {
+                header.addEventListener('click', () => toggleCollapse(index));
+            });
+
+            // 数据分析
+            dataTabs.forEach(tab => {
+                tab.addEventListener('click', () => switchDataTab(tab.dataset.tab));
+            });
+            
+            // 新增：主题设置
+            document.getElementById('theme-toggle').addEventListener('click', toggleDarkMode);
+            document.getElementById('primary-color').addEventListener('change', (e) => setPrimaryColor(e.target.value));
+            
+            // 新增：字体大小
+            document.querySelectorAll('.font-size-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const size = e.target.dataset.size;
+                    setFontSize(size);
+                    document.querySelectorAll('.font-size-btn').forEach(b => b.classList.remove('bg-light/80'));
+                    e.target.classList.add('bg-light/80');
+                });
+            });
+            
+            // 新增：白噪音控制
+            document.getElementById('whitenoise-toggle').addEventListener('click', toggleWhiteNoise);
+            document.getElementById('whitenoise-type').addEventListener('change', (e) => setWhiteNoiseType(e.target.value));
+            document.getElementById('whitenoise-volume').addEventListener('input', (e) => setWhiteNoiseVolume(e.target.value));
+            document.getElementById('play-during-break').addEventListener('change', (e) => setPlayDuringBreak(e.target.checked));
+            
+            // 新增：设置面板控制
+            document.getElementById('settings-toggle').addEventListener('click', toggleSettingsPanel);
+            document.getElementById('close-settings').addEventListener('click', toggleSettingsPanel);
+            // 点击遮罩层关闭设置面板
+            document.getElementById('settings-panel').addEventListener('click', (e) => {
+                if (e.target.id === 'settings-panel') {
+                    toggleSettingsPanel();
+                }
+            });
+            
+            // 新增：开始第一个番茄按钮
+            const startFirstPomoBtn = document.getElementById('start-first-pomo-btn');
+            if (startFirstPomoBtn) {
+                startFirstPomoBtn.addEventListener('click', () => {
+                    // 滚动到页面顶部的番茄钟部分
+                    window.scrollTo({
+                        top: 0,
+                        behavior: 'smooth'
+                    });
+                    // 启动计时器
+                    toggleTimer();
+                    // 关闭设置面板（如果打开）
+                    const settingsPanel = document.getElementById('settings-panel');
+                    if (settingsPanel && settingsPanel.style.display === 'flex') {
+                        toggleSettingsPanel();
+                    }
+                });
+            }
+        }
+
+        // ================= 折叠功能 =================
+        function toggleCollapse(index) {
+            const contents = [
+                ['plan-collapse', 'plan-list'],
+                ['habit-collapse', 'habit-list'],
+                ['goal-collapse', 'goal-list'],
+                ['data-collapse', 'data-chart-collapse', 'data-metric-collapse', 'pomo-detail-collapse']
+            ];
+            
+            contents[index].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.classList.toggle('collapse-open');
+                }
+            });
+            
+            const icon = collapseIcons[index];
+            if (icon) {
+                icon.classList.toggle('fa-chevron-down');
+                icon.classList.toggle('fa-chevron-up');
+            }
+        }
+
+        // ================= 番茄标签功能 =================
+        function switchPomoTag(tag) {
+            currentPomoTag = tag;
+            // 更新按钮样式
+            ['work', 'study', 'life'].forEach(t => {
+                const button = document.getElementById(`tag-${t}`);
+                if (t === tag) {
+                    button.classList.add('bg-primary', 'text-white');
+                    button.classList.remove('bg-light', 'text-gray-dark');
+                } else {
+                    button.classList.add('bg-light', 'text-gray-dark');
+                    button.classList.remove('bg-primary', 'text-white');
+                }
+            });
+        }
+
+        // ================= 习惯提醒功能 =================
+        function requestNotificationPermission() {
+            if (Notification.permission === 'default') {
+                Notification.requestPermission().then(permission => {
+                    if (permission === 'granted') {
+                        console.log('通知权限已获取');
+                    }
+                });
+            }
+        }
+
+        // 检查并发送习惯提醒
+        function checkHabitReminders() {
+            const now = new Date();
+            const currentTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
+            
+            habits.forEach(habit => {
+                if (habit.reminder === currentTime && !isHabitCheckedToday(habit)) {
+                    if (Notification.permission === 'granted') {
+                        new Notification('习惯提醒', {
+                            body: `是时候完成习惯：${habit.name}`,
+                            icon: 'https://cdn-icons-png.flaticon.com/512/2534/2534659.png'
+                        });
+                    }
+                }
+            });
+        }
+
+        // ================= 数据备份功能 =================
+        function exportData() {
+            const data = {
+                stats,
+                plans,
+                habits,
+                goals,
+                records,
+                exportTime: new Date().toISOString()
+            };
+            const dataStr = JSON.stringify(data, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'text/plain' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `pomodoro-data-${new Date().toISOString().split('T')[0]}.txt`;
+            link.click();
+            URL.revokeObjectURL(url);
+            alert('数据导出成功！');
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (confirm('确定要导入数据吗？这将覆盖当前所有数据。')) {
+                        stats = data.stats || { completedPomodoros: 0, focusTime: 0, currentStreak: 0 };
+                        plans = data.plans || [];
+                        habits = data.habits || [];
+                        goals = data.goals || [];
+                        records = data.records || { pomo: [], plan: [], habit: [], focus: [] };
+                        
+                        // 保存到本地存储
+                        saveStats();
+                        savePlans();
+                        saveHabits();
+                        saveGoals();
+                        saveRecords();
+                        
+                        // 重新渲染所有模块
+                        renderPlans();
+                        renderHabits();
+                        renderGoals();
+                        renderPomoDetail();
+                        updateStatsDisplay();
+                        updateDataMetrics(getActiveTab());
+                        initChart(getActiveTab());
+                        
+                        alert('数据导入成功！');
+                    }
+                } catch (error) {
+                    alert('数据格式错误，导入失败！');
+                }
+            };
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+
+        // ================= 番茄明细功能 =================
+        function renderPomoDetail() {
+            const filter = document.getElementById('pomo-tag-filter').value;
+            let filteredPomos = records.pomo;
+            
+            if (filter !== 'all') {
+                filteredPomos = filteredPomos.filter(p => p.tag === filter);
+            }
+            
+            // 按时间倒序排序
+            filteredPomos.sort((a, b) => new Date(b.time) - new Date(a.time));
+            
+            if (filteredPomos.length === 0) {
+                document.getElementById('pomo-detail-list').innerHTML = '<div class="text-center text-gray-mid py-2 text-xs">暂无番茄记录</div>';
+                return;
+            }
+            
+            document.getElementById('pomo-detail-list').innerHTML = filteredPomos.slice(0, 20).map(pomo => {
+                const date = new Date(pomo.time);
+                const timeStr = date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                const tagText = pomo.tag === 'work' ? '💼 工作' : 
+                               pomo.tag === 'study' ? '📚 学习' : '🏠 生活';
+                const planName = pomo.planId ? getPlanName(pomo.planId) : '';
+                
+                return `
+                    <div class="flex justify-between items-center p-1 border-b border-light/50">
+                        <div class="flex items-center gap-2">
+                            <span class="text-primary"><i class="fa fa-circle text-xs"></i></span>
+                            <span class="text-xs">${tagText}</span>
+                            ${planName ? `<span class="text-xs text-gray-mid">${planName}</span>` : ''}
+                        </div>
+                        <div class="text-xs text-gray-mid">${timeStr}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // ================= 拖拽排序功能 =================
+        let draggedPlanId = null;
+
+        function handlePlanDragStart(event, planId) {
+            draggedPlanId = planId;
+            event.dataTransfer.effectAllowed = 'move';
+            event.target.classList.add('opacity-50');
+        }
+
+        function handlePlanDrop(event, targetPlanId) {
+            event.preventDefault();
+            if (!draggedPlanId || draggedPlanId === targetPlanId) return;
+
+            const draggedPlan = plans.find(p => p.id === draggedPlanId);
+            const targetPlan = plans.find(p => p.id === targetPlanId);
+            
+            if (draggedPlan && targetPlan) {
+                // 交换order值实现排序
+                const tempOrder = draggedPlan.order;
+                draggedPlan.order = targetPlan.order;
+                targetPlan.order = tempOrder;
+                
+                savePlans();
+                renderPlans();
+            }
+            
+            // 清除拖拽状态
+            document.querySelectorAll('.drag-item').forEach(item => {
+                item.classList.remove('opacity-50');
+            });
+            draggedPlanId = null;
+        }
+
+        // ================= 完成动效功能 =================
+        function showCompletionEffect(element) {
+            element.classList.add('bounce-in');
+            setTimeout(() => {
+                element.classList.remove('bounce-in');
+            }, 500);
+        }
+
+        // ================= 主题系统功能 =================
+        // 应用主题
+        function applyTheme() {
+            const root = document.documentElement;
+            
+            // 应用深色/浅色模式
+            if (settings.theme === 'dark') {
+                root.classList.add('dark');
+                document.getElementById('theme-toggle').innerHTML = '<i class="fa fa-sun-o"></i> 浅色模式';
+            } else {
+                root.classList.remove('dark');
+                document.getElementById('theme-toggle').innerHTML = '<i class="fa fa-moon-o"></i> 深色模式';
+            }
+            
+            // 应用自定义主色
+            const colorMap = {
+                tomato: '#B52B2D',
+                blue: '#2563EB',
+                green: '#16A34A',
+                purple: '#7E22CE'
+            };
+            root.style.setProperty('--primary-color', colorMap[settings.primaryColor] || '#B52B2D');
+            
+            // 应用字体大小
+            const fontSizeMap = {
+                small: '0.875rem',
+                medium: '1rem',
+                large: '1.125rem'
+            };
+            root.style.setProperty('--font-size', fontSizeMap[settings.fontSize] || '1rem');
+            document.body.style.fontSize = fontSizeMap[settings.fontSize] || '1rem';
+        }
+        
+        // 切换深色模式
+        function toggleDarkMode() {
+            settings.theme = settings.theme === 'light' ? 'dark' : 'light';
+            applyTheme();
+            saveSettings();
+        }
+        
+        // 设置主色
+        function setPrimaryColor(color) {
+            settings.primaryColor = color;
+            applyTheme();
+            saveSettings();
+        }
+        
+        // 设置字体大小
+        function setFontSize(size) {
+            settings.fontSize = size;
+            applyTheme();
+            saveSettings();
+        }
+        
+        // 保存设置
+        function saveSettings() {
+            localStorage.setItem('pomodoroSettings', JSON.stringify(settings));
+        }
+
+        // ================= 白噪音功能 =================
+        // 白噪音音频URL映射
+        const whiteNoiseUrls = {
+            cafe: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', // 示例URL，实际应使用专门的白噪音音频
+            rain: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
+            library: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
+            nature: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3'
+        };
+        
+        // 播放白噪音
+        function playWhiteNoise() {
+            if (!settings.whiteNoise.enabled) return;
+            
+            // 停止当前音频
+            stopWhiteNoise();
+            
+            try {
+                const audio = new Audio(whiteNoiseUrls[settings.whiteNoise.type] || whiteNoiseUrls.cafe);
+                audio.loop = true;
+                audio.volume = settings.whiteNoise.volume;
+                audio.play().catch(error => {
+                    console.log('白噪音播放失败:', error);
+                });
+                currentAudio = audio;
+            } catch (error) {
+                console.log('白噪音初始化失败:', error);
+            }
+        }
+        
+        // 停止白噪音
+        function stopWhiteNoise() {
+            if (currentAudio) {
+                currentAudio.pause();
+                currentAudio = null;
+            }
+        }
+        
+        // 切换白噪音
+        function toggleWhiteNoise() {
+            settings.whiteNoise.enabled = !settings.whiteNoise.enabled;
+            if (settings.whiteNoise.enabled) {
+                if (isRunning && isWorkMode) {
+                    playWhiteNoise();
+                }
+                document.getElementById('whitenoise-toggle').innerHTML = '<i class="fa fa-volume-off"></i> 关闭';
+            } else {
+                stopWhiteNoise();
+                document.getElementById('whitenoise-toggle').innerHTML = '<i class="fa fa-volume-up"></i> 开启';
+            }
+            saveSettings();
+        }
+        
+        // 设置白噪音类型
+        function setWhiteNoiseType(type) {
+            settings.whiteNoise.type = type;
+            if (settings.whiteNoise.enabled && isRunning && isWorkMode) {
+                playWhiteNoise();
+            }
+            saveSettings();
+        }
+        
+        // 设置白噪音音量
+        function setWhiteNoiseVolume(volume) {
+            settings.whiteNoise.volume = parseFloat(volume);
+            if (currentAudio) {
+                currentAudio.volume = settings.whiteNoise.volume;
+            }
+            saveSettings();
+        }
+        
+        // 设置休息时是否播放
+        function setPlayDuringBreak(play) {
+            settings.whiteNoise.playDuringBreak = play;
+            saveSettings();
+        }
+
+        // ================= 计划模板功能 =================
+        // 保存当前计划为模板
+        function saveAsTemplate() {
+            const name = prompt('请输入模板名称：');
+            if (!name) return;
+            
+            const template = {
+                id: generateId(),
+                name,
+                plans: JSON.parse(JSON.stringify(plans)),
+                createTime: new Date().toLocaleDateString()
+            };
+            
+            planTemplates.push(template);
+            savePlanTemplates();
+            updateTemplateSelect();
+            alert('模板保存成功！');
+        }
+        
+        // 加载模板
+        function loadTemplate(templateId) {
+            if (!templateId) return;
+            
+            const template = planTemplates.find(t => t.id === templateId);
+            if (template) {
+                if (confirm('加载模板将覆盖当前所有计划，确定继续吗？')) {
+                    plans = JSON.parse(JSON.stringify(template.plans));
+                    savePlans();
+                    renderPlans();
+                    document.getElementById('template-select').value = '';
+                }
+            }
+        }
+        
+        // 删除模板
+        function deleteTemplate(templateId) {
+            if (confirm('确定删除该模板吗？')) {
+                planTemplates = planTemplates.filter(t => t.id !== templateId);
+                savePlanTemplates();
+                updateTemplateSelect();
+            }
+        }
+        
+        // 保存模板
+        function savePlanTemplates() {
+            localStorage.setItem('pomodoroPlanTemplates', JSON.stringify(planTemplates));
+        }
+        
+        // 更新模板选择器
+        function updateTemplateSelect() {
+            const select = document.getElementById('template-select');
+            select.innerHTML = '<option value="">加载模板</option>' + 
+                planTemplates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+
+        // ================= 目标关联功能 =================
+        // 更新目标选择器
+        function updateGoalSelect() {
+            const goalSelect = document.getElementById('goal-select');
+            const stageSelect = document.getElementById('stage-select');
+            
+            goalSelect.innerHTML = '<option value="">关联目标（可选）</option>' +
+                goals.map(g => `<option value="${g.id}">${g.name}</option>`).join('');
+            
+            stageSelect.innerHTML = '<option value="">选择阶段</option>';
+            stageSelect.disabled = true;
+        }
+        
+        // 更新阶段选择器
+        function updateStageSelect(goalId) {
+            const stageSelect = document.getElementById('stage-select');
+            const goal = goals.find(g => g.id === goalId);
+            
+            if (goal) {
+                stageSelect.innerHTML = '<option value="">选择阶段</option>' +
+                    goal.stages.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+                stageSelect.disabled = false;
+            } else {
+                stageSelect.innerHTML = '<option value="">选择阶段</option>';
+                stageSelect.disabled = true;
+            }
+        }
+        
+        // 完成计划时更新目标进度
+        function updateGoalProgressOnPlanComplete(plan) {
+            if (!plan.relatedGoalId || !plan.relatedStageId) return;
+            
+            const goal = goals.find(g => g.id === plan.relatedGoalId);
+            if (!goal) return;
+            
+            const stage = goal.stages.find(s => s.id === plan.relatedStageId);
+            if (!stage) return;
+            
+            // 检查该阶段的所有关联计划是否都已完成
+            const relatedPlans = plans.filter(p => 
+                p.relatedGoalId === plan.relatedGoalId && 
+                p.relatedStageId === plan.relatedStageId
+            );
+            
+            const completedRelatedPlans = relatedPlans.filter(p => p.isCompleted);
+            
+            if (relatedPlans.length > 0 && completedRelatedPlans.length === relatedPlans.length) {
+                stage.isCompleted = true;
+                saveGoals();
+                renderGoals();
+                
+                // 显示完成提示
+                showNotification(`🎉 恭喜！目标"${goal.name}"的"${stage.name}"阶段已完成！`);
+            }
+        }
+        
+        // 显示通知
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'fixed top-4 right-4 bg-primary text-white px-4 py-2 rounded-lg shadow-lg z-50 bounce-in';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        // 切换设置面板
+        function toggleSettingsPanel() {
+            const settingsPanel = document.getElementById('settings-panel');
+            const isVisible = !settingsPanel.classList.contains('hidden');
+            
+            if (isVisible) {
+                settingsPanel.classList.add('hidden');
+                document.body.style.overflow = 'auto'; // 恢复滚动
+            } else {
+                settingsPanel.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // 禁止滚动
+                // 重新应用主题到设置面板
+                applyTheme();
+            }
+        }
+
+        // ================= 全局函数暴露 =================
+        // 重新绑定所有删除相关函数，确保能正确访问
+        window.deletePlan = function(id) {
+            if (confirm('确定删除该计划吗？')) {
+                plans = plans.filter(p => p.id !== id);
+                if (currentBindPlan === id) currentBindPlan = null;
+                localStorage.setItem('pomodoroPlans', JSON.stringify(plans));
+                renderPlans();
+                updateTimerDisplay();
+            }
+        };
+        
+        window.deleteHabit = function(id) {
+            if (confirm('确定删除该习惯吗？')) {
+                habits = habits.filter(h => h.id !== id);
+                localStorage.setItem('pomodoroHabits', JSON.stringify(habits));
+                renderHabits();
+            }
+        };
+        
+        window.deleteGoal = function(id) {
+            if (confirm('确定删除该目标吗？')) {
+                goals = goals.filter(g => g.id !== id);
+                localStorage.setItem('pomodoroGoals', JSON.stringify(goals));
+                renderGoals();
+                updateGoalSelect(); // 更新目标选择器
+            }
+        };
+        
+        // 主题相关函数
+        window.toggleDarkMode = toggleDarkMode;
+        window.setPrimaryColor = setPrimaryColor;
+        window.setFontSize = setFontSize;
+        
+        // 白噪音相关函数
+        window.toggleWhiteNoise = toggleWhiteNoise;
+        window.setWhiteNoiseType = setWhiteNoiseType;
+        window.setWhiteNoiseVolume = setWhiteNoiseVolume;
+        window.setPlayDuringBreak = setPlayDuringBreak;
+        
+        // 模板相关函数
+        window.saveAsTemplate = saveAsTemplate;
+        window.loadTemplate = loadTemplate;
+        
+        // 其他全局函数
+        window.toggleTimer = toggleTimer;
+        window.resetTimer = resetTimer;
+        window.toggleMode = toggleMode;
+        window.addPlanItem = addPlanItem;
+        window.completePlan = completePlan;
+        window.bindPlan = bindPlan;
+        window.addHabitItem = addHabitItem;
+        window.toggleHabitCheckin = toggleHabitCheckin;
+        window.addGoalItem = addGoalItem;
+        window.toggleGoalStage = toggleGoalStage;
+        window.switchDataTab = switchDataTab;
+        window.toggleCollapse = toggleCollapse;
+        window.switchPomoTag = switchPomoTag;
+        window.exportData = exportData;
+        window.importData = importData;
+        window.renderPomoDetail = renderPomoDetail;
+        window.handlePlanDragStart = handlePlanDragStart;
+        window.handlePlanDrop = handlePlanDrop;
+        window.showCompletionEffect = showCompletionEffect;
+    </script>
+
+</body></html>
