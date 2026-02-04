@@ -1,6 +1,14 @@
 <html lang="zh-CN"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- PWA 支持 -->
+<meta name="theme-color" content="#B52B2D">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="番茄钟">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=minimalist%20tomato%20timer%20app%20icon%20with%20red%20tomato%20and%20clock%20elements%2C%20clean%20design%2C%20transparent%20background&image_size=square" type="image/png">
+<link rel="apple-touch-icon" href="https://trae-api-cn.mchost.guru/api/ide/v1/text_to_image?prompt=minimalist%20tomato%20timer%20app%20icon%20with%20red%20tomato%20and%20clock%20elements%2C%20clean%20design%2C%20transparent%20background&image_size=square">
     <title>极简番茄工作法 | 计时+计划+习惯+数据分析</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -2105,5 +2113,18 @@
         window.handlePlanDrop = handlePlanDrop;
         window.showCompletionEffect = showCompletionEffect;
     </script>
-
+<script>
+  // 注册 Service Worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then((registration) => {
+          console.log('Service Worker 注册成功:', registration.scope);
+        })
+        .catch((error) => {
+          console.log('Service Worker 注册失败:', error);
+        });
+    });
+  }
+</script>
 </body></html>
